@@ -1,0 +1,34 @@
+feature,area,priority,original,clone,notes
+Props board for today with every player prop,board,must,yes,yes,S02
+Switch sport (NBA NFL MLB NHL),board,must,yes,yes,
+Filter by market (points rebounds yards ...),board,must,yes,yes,
+Hit rates L5 L10 L20 and season per prop,board,must,yes,yes,
+Sort by any column,board,must,yes,yes,server-side sort by link; works without JS
+Per-prop rating score,board,must,yes,yes,own published formula in lib/stats.ts
+Matchup rank (defense vs position) on each prop,board,must,yes,yes,
+Player prop page with game log vs line,player,must,yes,yes,S03
+Hit-rate window switch on the player page,player,must,yes,yes,L5 L10 L20
+Odds by sportsbook with best price,player,must,yes,yes,fictional books until a licensed odds feed is connected
+Free tier limited to one game per league,billing,must,yes,yes,gated on the server; API returns no numbers for locked props
+Responsive on phone width,platform,must,yes,yes,e2e runs at 390px and 1440px
+Today's games slate,games,should,yes,yes,S04
+Game page with its props,games,should,yes,yes,S05
+Defense vs position matchup table,matchups,should,yes,yes,S06
+Head-to-head hit rate vs today's opponent,player,should,yes,yes,
+Home and away split,player,should,yes,yes,
+Search by player name,board,should,yes,yes,also team name or abbreviation
+Save props to a shortlist,slip,should,yes,partial,saved in the browser only; saved_props table and auth not wired
+Paid plan checkout and account,billing,should,yes,partial,demo cookie toggle; Stripe Checkout and webhook not wired
+Alt lines on the player page,player,could,yes,yes,
+Topic cheatsheets (TD red zone home run),cheatsheets,could,yes,no,
+Power ratings and game projections,games,could,yes,no,
+Line movement history,player,could,yes,no,table in schema.sql; no UI
+Native iOS app,platform,could,yes,no,responsive web instead; Expo later
+Live licensed stats and odds feed,data,could,yes,skip,licensed data: the owner brings a feed with their own keys
+Original's PF rating formula,board,could,yes,skip,proprietary and unknown; the clone has its own published formula
+CFB and WNBA leagues,board,could,yes,skip,scoped out of v1; same code path as other sports
+Picks and community content,content,could,yes,skip,their content not a feature
+Rating breakdown shown on every prop,fixes,should,no,yes,fix: rating is a black box elsewhere; ours shows inputs and weights
+Server-rendered board fast on slow connections,fixes,should,no,yes,fix: thin evidence of slowness complaints
+Works on Android and any browser,fixes,should,no,yes,fix: original mobile is iOS only
+One-click cancel,fixes,should,no,yes,on the account page

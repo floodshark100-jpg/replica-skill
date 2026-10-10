@@ -1,0 +1,6 @@
+{
+  "name": "Linecraft",
+  "avoid": ["PropFinder", "Prop Finder", "PF rating", "PF Rating"],
+  "domains": ["propfinder.app", "blog.propfinder.app"],
+  "colors": []
+}

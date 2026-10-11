@@ -13,7 +13,9 @@ Date: 2026-10-10  Go from user: **not yet**. Nothing has been deployed.
 - [x] store listing passes (`listing.py` 0 errors, 0 warnings), for a later Expo build
 - [x] contrast: 17 pairs, 0 AA failures
 - [x] `npm audit`: 0 vulnerabilities
-- [ ] **licensed data feed connected** (blocker: the app is on fictional data)
+- [x] live odds wired (The Odds API, `ODDS_API_KEY`); live-mode e2e green against a mock
+- [ ] **checked against the real odds API with your key** (market keys accepted, quota per refresh as expected)
+- [ ] stats feed connected (hit rates, rating and matchups are demo-only until then)
 - [ ] **demo plan cookie removed, Stripe wired** (blocker: anyone can turn on Pro)
 - [ ] privacy policy and terms live, every processor listed
 - [ ] account deletion works (no accounts yet)

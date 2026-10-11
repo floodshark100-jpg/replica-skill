@@ -3,8 +3,10 @@ export interface SavedProp {
   id: string;
   playerId: string;
   player: string;
-  team: string;
-  opp: string;
+  // "BOS @ NYK"; older saves have team/opp instead
+  game?: string;
+  team?: string;
+  opp?: string;
   market: string;
   marketLabel: string;
   side: "over" | "under";

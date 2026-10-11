@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { game as getGame, team, board, SORTS, type SortKey } from "@/lib/data.ts";
+import { gameById, board, mode, SORTS, type SortKey } from "@/lib/data.ts";
 import { currentPlan } from "@/lib/plan.ts";
 import { PropsTable } from "@/components/PropsTable.tsx";
 
@@ -9,21 +9,20 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<str
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const g = getGame((await params).id);
-  return { title: g ? `${team(g.awayId).abbr} at ${team(g.homeId).abbr}` : "Game not found" };
+  const found = await gameById((await params).id);
+  return { title: found ? `${found.away.abbr} at ${found.home.abbr}` : "Game not found" };
 }
 
 export default async function GamePage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const g = getGame(id);
-  if (!g) notFound();
+  const found = await gameById(id);
+  if (!found) notFound();
+  const { game: g, home, away } = found;
   const plan = await currentPlan();
-  const sort = (SORTS as readonly string[]).includes(one(sp.sort) ?? "") ? (one(sp.sort) as SortKey) : "score";
+  const sort = (SORTS as readonly string[]).includes(one(sp.sort) ?? "") ? (one(sp.sort) as SortKey) : mode() === "live" ? "ev" : "score";
   const dir = one(sp.dir) === "asc" ? "asc" : one(sp.dir) === "desc" ? "desc" : sort === "player" ? "asc" : "desc";
-  const { rows, locked } = board({ sport: g.sport, gameId: g.id, sort, dir, plan });
-  const home = team(g.homeId);
-  const away = team(g.awayId);
+  const { rows, locked } = await board({ sport: g.sport, gameId: g.id, sort, dir, plan });
   return (
     <>
       <p className="xs muted"><Link href={`/games?sport=${g.sport}`}>Games</Link> / {g.sport.toUpperCase()}</p>

@@ -1,28 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { propDetail, player as getPlayer, team } from "@/lib/data.ts";
+import { propDetail, playerName } from "@/lib/data.ts";
 import { currentPlan } from "@/lib/plan.ts";
 import { last } from "@/lib/stats.ts";
-import { num, odds, ordinal, pct } from "@/lib/format.ts";
+import { evPct, num, odds, ordinal, pct, prob } from "@/lib/format.ts";
 import { GameLogChart } from "@/components/GameLogChart.tsx";
 import { Hit, RatingBadge, SideTag } from "@/components/Stat.tsx";
 import { SaveButton } from "@/components/SaveButton.tsx";
+import { LiveOdds } from "@/components/LiveOdds.tsx";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 const WINDOWS = [5, 10, 20] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const p = getPlayer((await params).id);
-  return { title: p ? p.name : "Player not found" };
+  const name = await playerName((await params).id);
+  return { title: name ?? "Player not found" };
 }
 
 export default async function PlayerPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
   const plan = await currentPlan();
-  const d = propDetail(id, one(sp.market), plan);
+  const d = await propDetail(id, one(sp.market), plan);
   if (!d) notFound();
   const w = Number(one(sp.window));
   const win = (WINDOWS as readonly number[]).includes(w) ? w : 10;
@@ -31,9 +32,9 @@ export default async function PlayerPage({ params, searchParams }: Props) {
 
   const header = (
     <>
-      <p className="xs muted"><Link href={`/props?sport=${row.sport}`}>Props</Link> / {row.team.city} {row.team.name}</p>
+      <p className="xs muted"><Link href={`/props?sport=${row.sport}`}>Props</Link>{row.team ? ` / ${row.team.city} ${row.team.name}` : ""}</p>
       <h1>{p.name}</h1>
-      <p className="muted sm">{p.position} · {row.team.abbr} {row.home ? "vs" : "@"} {row.opp.abbr} · <time dateTime={row.startAt}>{new Date(row.startAt).toUTCString().slice(0, 22)} UTC</time> · <Link href={`/games/${row.gameId}`}>Game</Link></p>
+      <p className="muted sm">{p.position ? `${p.position} · ` : ""}{row.gameLabel} · <time dateTime={row.startAt}>{new Date(row.startAt).toUTCString().slice(0, 22)} UTC</time> · <Link href={`/games/${row.gameId}`}>Game</Link></p>
       <div className="chips" aria-label="Market">
         {markets.map((m) => (
           <Link key={m.key} className="chip" aria-current={m.key === row.market.key ? "true" : undefined} href={{ pathname: `/player/${p.id}`, query: { market: m.key, window: String(win) } }}>{m.label}</Link>
@@ -42,7 +43,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
     </>
   );
 
-  if ("locked" in d) {
+  if (d.kind === "locked") {
     return (
       <>
         {header}
@@ -51,6 +52,15 @@ export default async function PlayerPage({ params, searchParams }: Props) {
           <p className="muted">The free plan opens the first game of the day in each sport. Pro opens every game, every prop.</p>
           <Link className="btn btn-primary" href="/pricing">See Pro</Link>
         </div>
+      </>
+    );
+  }
+
+  if (d.kind === "live") {
+    return (
+      <>
+        {header}
+        <LiveOdds d={d} />
       </>
     );
   }
@@ -65,15 +75,17 @@ export default async function PlayerPage({ params, searchParams }: Props) {
           <RatingBadge score={row.score} />
           <h2 id="line-h" style={{ margin: 0 }}><SideTag side={side} /> <span className="mono">{row.line}</span> {row.market.label}</h2>
           <span className="spacer" />
-          <SaveButton size="md" prop={{ id: row.id, playerId: p.id, player: p.name, team: row.team.abbr, opp: row.opp.abbr, market: row.market.key, marketLabel: row.market.label, side, line: row.line, score: row.score, sport: row.sport, savedAt: "" }} />
+          <SaveButton size="md" prop={{ id: row.id, playerId: p.id, player: p.name, game: row.gameLabel, market: row.market.key, marketLabel: row.market.label, side, line: row.line, score: row.score, sport: row.sport, savedAt: "" }} />
         </div>
         <div className="tiles" style={{ marginTop: "var(--s4)" }}>
           <div className="tile"><div className="xs muted">Last 5</div><div className="big"><Hit r={row.l5} showCount /></div></div>
           <div className="tile"><div className="xs muted">Last 10</div><div className="big"><Hit r={row.l10} showCount /></div></div>
           <div className="tile"><div className="xs muted">Last 20</div><div className="big"><Hit r={row.l20} showCount /></div></div>
           <div className="tile"><div className="xs muted">Season</div><div className="big"><Hit r={row.season} showCount /></div></div>
-          <div className="tile"><div className="xs muted">vs {row.opp.abbr}</div><div className="big"><Hit r={row.h2h} showCount /></div></div>
+          <div className="tile"><div className="xs muted">vs {row.opp!.abbr}</div><div className="big"><Hit r={row.h2h} showCount /></div></div>
           <div className="tile"><div className="xs muted">L10 average</div><div className="big mono">{num(row.l10Avg)}</div></div>
+          <div className="tile"><div className="xs muted">Market fair, {side}</div><div className="big mono">{prob(row.fair)}</div></div>
+          <div className="tile"><div className="xs muted">EV at {odds(row.bestOdds)}</div><div className="big mono">{evPct(row.ev)}</div></div>
         </div>
       </section>
 
@@ -102,7 +114,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
               </div>
             ))}
             <p className="xs muted" style={{ margin: 0 }}>
-              Each input is scored 0-100 for the {side}, then weighted. Opponent: {row.opp.abbr} rank {ordinal(row.matchupRank!)} of {row.teamCount} in {row.market.label.toLowerCase()} allowed to {p.position}s
+              Each input is scored 0-100 for the {side}, then weighted. Opponent: {row.opp!.abbr} rank {ordinal(row.matchupRank!)} of {row.teamCount} in {row.market.label.toLowerCase()} allowed to {p.position}s
               {d.matchupAllowed !== null ? ` (${d.matchupAllowed} a game)` : ""}.
             </p>
           </div>
@@ -170,7 +182,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
                 return (
                   <tr key={i}>
                     <td className="mono">{g.date}</td>
-                    <td>{g.home ? "vs" : "@"} {team(g.opp.id).abbr}</td>
+                    <td>{g.home ? "vs" : "@"} {g.opp.abbr}</td>
                     <td className="num mono">{g.value}</td>
                     <td className={res === "Hit" ? "rank-soft" : res === "Miss" ? "rank-hard" : "muted"}>{res}</td>
                   </tr>

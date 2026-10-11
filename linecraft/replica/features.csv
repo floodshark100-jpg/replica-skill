@@ -24,11 +24,13 @@ Topic cheatsheets (TD red zone home run),cheatsheets,could,yes,no,
 Power ratings and game projections,games,could,yes,no,
 Line movement history,player,could,yes,no,table in schema.sql; no UI
 Native iOS app,platform,could,yes,no,responsive web instead; Expo later
-Live licensed stats and odds feed,data,could,yes,skip,licensed data: the owner brings a feed with their own keys
+Live player-prop lines and prices,data,could,yes,yes,The Odds API with the owner's key (ODDS_API_KEY); demo seed without it
+Live stats feed for game logs,data,could,yes,skip,licensed data: the owner brings a stats provider with their own keys
 Original's PF rating formula,board,could,yes,skip,proprietary and unknown; the clone has its own published formula
 CFB and WNBA leagues,board,could,yes,skip,scoped out of v1; same code path as other sports
 Picks and community content,content,could,yes,skip,their content not a feature
 Rating breakdown shown on every prop,fixes,should,no,yes,fix: rating is a black box elsewhere; ours shows inputs and weights
 Server-rendered board fast on slow connections,fixes,should,no,yes,fix: thin evidence of slowness complaints
+No-vig fair odds and EV on every prop,fixes,should,no,yes,market value even without game logs
 Works on Android and any browser,fixes,should,no,yes,fix: original mobile is iOS only
 One-click cancel,fixes,should,no,yes,on the account page

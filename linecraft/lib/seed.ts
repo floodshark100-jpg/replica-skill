@@ -9,11 +9,15 @@ export interface Market {
   label: string;
   short: string;
   positions: string[];
+  // market key at The Odds API (player props are fetched per event)
+  oddsApi: string;
 }
 
 export interface Sport {
   key: SportKey;
   name: string;
+  // sport key at The Odds API
+  oddsApi: string;
   markets: Market[];
   // roster template: position and per-market season mean
   roster: { position: string; means: Record<string, number> }[];
@@ -32,13 +36,14 @@ export const BOOKS = ["Northbook", "Pinehill", "Atlasbet", "Harborline"];
 export const SPORTS: Sport[] = [
   {
     key: "nba",
+    oddsApi: "basketball_nba",
     name: "Basketball",
     markets: [
-      { key: "points", label: "Points", short: "PTS", positions: ["G", "F", "C"] },
-      { key: "rebounds", label: "Rebounds", short: "REB", positions: ["G", "F", "C"] },
-      { key: "assists", label: "Assists", short: "AST", positions: ["G", "F", "C"] },
-      { key: "threes", label: "3-pointers made", short: "3PM", positions: ["G", "F"] },
-      { key: "pra", label: "Pts + Reb + Ast", short: "PRA", positions: ["G", "F", "C"] },
+      { key: "points", label: "Points", short: "PTS", positions: ["G", "F", "C"], oddsApi: "player_points" },
+      { key: "rebounds", label: "Rebounds", short: "REB", positions: ["G", "F", "C"], oddsApi: "player_rebounds" },
+      { key: "assists", label: "Assists", short: "AST", positions: ["G", "F", "C"], oddsApi: "player_assists" },
+      { key: "threes", label: "3-pointers made", short: "3PM", positions: ["G", "F"], oddsApi: "player_threes" },
+      { key: "pra", label: "Pts + Reb + Ast", short: "PRA", positions: ["G", "F", "C"], oddsApi: "player_points_rebounds_assists" },
     ],
     roster: [
       { position: "G", means: { points: 24, rebounds: 4.5, assists: 7, threes: 2.8 } },
@@ -50,12 +55,13 @@ export const SPORTS: Sport[] = [
   },
   {
     key: "nfl",
+    oddsApi: "americanfootball_nfl",
     name: "Football",
     markets: [
-      { key: "pass_yds", label: "Passing yards", short: "PASS", positions: ["QB"] },
-      { key: "rush_yds", label: "Rushing yards", short: "RUSH", positions: ["QB", "RB"] },
-      { key: "rec_yds", label: "Receiving yards", short: "REC YDS", positions: ["RB", "WR", "TE"] },
-      { key: "receptions", label: "Receptions", short: "REC", positions: ["RB", "WR", "TE"] },
+      { key: "pass_yds", label: "Passing yards", short: "PASS", positions: ["QB"], oddsApi: "player_pass_yds" },
+      { key: "rush_yds", label: "Rushing yards", short: "RUSH", positions: ["QB", "RB"], oddsApi: "player_rush_yds" },
+      { key: "rec_yds", label: "Receiving yards", short: "REC YDS", positions: ["RB", "WR", "TE"], oddsApi: "player_reception_yds" },
+      { key: "receptions", label: "Receptions", short: "REC", positions: ["RB", "WR", "TE"], oddsApi: "player_receptions" },
     ],
     roster: [
       { position: "QB", means: { pass_yds: 245, rush_yds: 18 } },
@@ -66,11 +72,12 @@ export const SPORTS: Sport[] = [
   },
   {
     key: "mlb",
+    oddsApi: "baseball_mlb",
     name: "Baseball",
     markets: [
-      { key: "hits", label: "Hits", short: "H", positions: ["IF", "OF"] },
-      { key: "total_bases", label: "Total bases", short: "TB", positions: ["IF", "OF"] },
-      { key: "strikeouts", label: "Pitcher strikeouts", short: "K", positions: ["SP"] },
+      { key: "hits", label: "Hits", short: "H", positions: ["IF", "OF"], oddsApi: "batter_hits" },
+      { key: "total_bases", label: "Total bases", short: "TB", positions: ["IF", "OF"], oddsApi: "batter_total_bases" },
+      { key: "strikeouts", label: "Pitcher strikeouts", short: "K", positions: ["SP"], oddsApi: "pitcher_strikeouts" },
     ],
     roster: [
       { position: "IF", means: { hits: 1.15, total_bases: 1.9 } },
@@ -81,11 +88,12 @@ export const SPORTS: Sport[] = [
   },
   {
     key: "nhl",
+    oddsApi: "icehockey_nhl",
     name: "Hockey",
     markets: [
-      { key: "shots", label: "Shots on goal", short: "SOG", positions: ["F", "D"] },
-      { key: "points", label: "Points", short: "PTS", positions: ["F", "D"] },
-      { key: "saves", label: "Goalie saves", short: "SV", positions: ["G"] },
+      { key: "shots", label: "Shots on goal", short: "SOG", positions: ["F", "D"], oddsApi: "player_shots_on_goal" },
+      { key: "points", label: "Points", short: "PTS", positions: ["F", "D"], oddsApi: "player_points" },
+      { key: "saves", label: "Goalie saves", short: "SV", positions: ["G"], oddsApi: "player_total_saves" },
     ],
     roster: [
       { position: "F", means: { shots: 3.4, points: 1.0 } },

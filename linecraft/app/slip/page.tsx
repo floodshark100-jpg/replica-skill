@@ -38,7 +38,7 @@ export default function SlipPage() {
               <tbody>
                 {list.map((p) => (
                   <tr key={p.id}>
-                    <td className="player-cell"><Link href={`/player/${p.playerId}?market=${p.market}`}>{p.player}</Link><div className="xs muted">{p.team} vs {p.opp} · {p.sport.toUpperCase()}</div></td>
+                    <td className="player-cell"><Link href={`/player/${p.playerId}?market=${p.market}`}>{p.player}</Link><div className="xs muted">{p.game ?? `${p.team} vs ${p.opp}`} · {p.sport.toUpperCase()}</div></td>
                     <td><span className={`side ${p.side}`}>{p.side}</span> <span className="mono">{p.line}</span> <span className="muted sm">{p.marketLabel}</span></td>
                     <td className="num mono">{p.score ?? "–"}</td>
                     <td><button type="button" className="btn btn-ghost btn-sm" aria-label={`Remove ${p.player} ${p.marketLabel}`} onClick={() => writeSaved(readSaved().filter((x) => x.id !== p.id))}>Remove</button></td>

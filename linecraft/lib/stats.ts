@@ -100,3 +100,47 @@ export function bestOdds(odds: number[]): number | null {
   if (odds.length === 0) return null;
   return odds.reduce((best, o) => (impliedProbability(o) < impliedProbability(best) ? o : best));
 }
+
+// American odds -> decimal payout per 1 staked (stake included).
+export function decimalOdds(american: number): number {
+  return american > 0 ? 1 + american / 100 : 1 + 100 / -american;
+}
+
+// Remove the book's margin from a two-way price: scale both implied
+// probabilities so they sum to 1 (the multiplicative method).
+export function noVig(over: number, under: number): { over: number; under: number } {
+  const o = impliedProbability(over);
+  const u = impliedProbability(under);
+  return { over: o / (o + u), under: u / (o + u) };
+}
+
+// Expected return per 1 staked when the true chance is `prob`.
+export function expectedValue(prob: number, american: number): number {
+  return prob * decimalOdds(american) - 1;
+}
+
+export interface MarketPrice {
+  // consensus no-vig probability of each side, averaged over books quoting both sides
+  fair: { over: number; under: number } | null;
+  best: { over: number | null; under: number | null };
+  ev: { over: number | null; under: number | null };
+}
+
+// Fair odds and EV at one line, from every book quoting that line.
+export function marketPrice(quotes: { over: number; under: number }[]): MarketPrice {
+  if (quotes.length === 0) return { fair: null, best: { over: null, under: null }, ev: { over: null, under: null } };
+  const fairs = quotes.map((q) => noVig(q.over, q.under));
+  const fair = {
+    over: fairs.reduce((s, f) => s + f.over, 0) / fairs.length,
+    under: fairs.reduce((s, f) => s + f.under, 0) / fairs.length,
+  };
+  const best = { over: bestOdds(quotes.map((q) => q.over)), under: bestOdds(quotes.map((q) => q.under)) };
+  return {
+    fair,
+    best,
+    ev: {
+      over: best.over === null ? null : expectedValue(fair.over, best.over),
+      under: best.under === null ? null : expectedValue(fair.under, best.under),
+    },
+  };
+}

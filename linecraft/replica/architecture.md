@@ -10,7 +10,8 @@ Reads `recon.md` and `features.csv`.
 | styling | plain CSS on custom properties from `design/tokens.css` | no build plugin to configure; every component uses tokens |
 | data (v1) | `lib/data.ts` over a deterministic seed (`lib/seed.ts`) | runs with zero accounts or keys; same function signatures as the real layer |
 | database (prod) | Postgres on Supabase | one database, RLS for the watchlist |
-| stats + odds | a `DataProvider` interface, owner's licensed feed with their own keys | live sports data is licensed; we never scrape anyone's site |
+| odds | The Odds API via `lib/live.ts`, owner's key in `ODDS_API_KEY`; demo seed without it | official API, per-event player props; cached per sport to save quota |
+| stats | not wired; owner's licensed provider | an odds feed has no game logs, so live mode ranks by EV until this is added |
 | auth (prod) | Supabase Auth, email magic link | cheapest, no passwords to store |
 | payments (prod) | Stripe Checkout + Customer Portal | one-click cancel |
 | jobs (prod) | Vercel Cron: pull lines every 5 min on game days, stats nightly | |

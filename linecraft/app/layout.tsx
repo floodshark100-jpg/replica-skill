@@ -4,6 +4,7 @@ import "./globals.css";
 import { Nav } from "@/components/Nav.tsx";
 import { Logo } from "@/components/Logo.tsx";
 import { currentPlan } from "@/lib/plan.ts";
+import { mode } from "@/lib/data.ts";
 
 export const metadata: Metadata = {
   title: { default: "Linecraft · Player prop research", template: "%s · Linecraft" },
@@ -32,7 +33,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               Research only. Linecraft is not a sportsbook and takes no bets. 21+ (18+ where legal). If gambling stops being fun,
               call or text 1-800-GAMBLER.
             </p>
-            <p>Demo data: every league, team and player here is fictional until a licensed data feed is connected.</p>
+            {mode() === "live" ? (
+              <p>Lines and prices from The Odds API, refreshed every few minutes. Prices move: check the book before you bet.</p>
+            ) : (
+              <p>Demo data: every league, team and player here is fictional until a data feed is connected.</p>
+            )}
           </div>
         </footer>
       </body>

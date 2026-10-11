@@ -52,3 +52,34 @@ test("best odds is the biggest payout", () => {
   assert.equal(bestOdds([]), null);
   assert.ok(Math.abs(impliedProbability(-110) - 0.5238) < 0.001);
 });
+
+import { decimalOdds, noVig, expectedValue, marketPrice } from "../../lib/stats.ts";
+
+test("decimal odds", () => {
+  assert.equal(decimalOdds(100), 2);
+  assert.equal(decimalOdds(-200), 1.5);
+  assert.equal(decimalOdds(150), 2.5);
+});
+
+test("no-vig removes the margin and sums to 1", () => {
+  const f = noVig(-110, -110);
+  assert.ok(Math.abs(f.over - 0.5) < 1e-9);
+  const g = noVig(-150, 130);
+  assert.ok(Math.abs(g.over + g.under - 1) < 1e-9);
+  assert.ok(g.over > 0.55 && g.over < 0.6);
+});
+
+test("EV is zero at a fair price and positive above it", () => {
+  assert.ok(Math.abs(expectedValue(0.5, 100)) < 1e-9);
+  assert.ok(expectedValue(0.5, 110) > 0);
+  assert.ok(expectedValue(0.5, -110) < 0);
+});
+
+test("market price shops the best book against the consensus fair line", () => {
+  const m = marketPrice([{ over: -110, under: -110 }, { over: -110, under: -110 }, { over: 105, under: -125 }]);
+  assert.equal(m.best.over, 105);
+  assert.equal(m.best.under, -110);
+  assert.ok(m.ev.over! > 0, "a +105 over against a ~49% fair over is +EV");
+  assert.ok(m.ev.under! < 0);
+  assert.deepEqual(marketPrice([]).fair, null);
+});

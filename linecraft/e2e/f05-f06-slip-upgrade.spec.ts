@@ -40,7 +40,7 @@ test("F06-H1 upgrade unlocks every game, cancel locks again", async ({ page, axe
   await page.getByRole("button", { name: "Start free trial" }).click();
   await expect(page).toHaveURL(/\/props/);
   await expect(page.getByRole("link", { name: /Plan: pro/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /more props in/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /more props? in/ })).toHaveCount(0);
   await page.goto("/account");
   await page.getByRole("button", { name: "Cancel Pro" }).click();
   await expect(page.getByRole("heading", { name: "Plan: Free" })).toBeVisible();

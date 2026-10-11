@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { games, isSport, sport as getSport, team, propCount, isUnlocked } from "@/lib/data.ts";
+import { gameCards, isSport, sport as getSport } from "@/lib/data.ts";
 import { currentPlan } from "@/lib/plan.ts";
 import { SportTabs } from "@/components/SportTabs.tsx";
 
@@ -11,27 +11,24 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
   const raw = Array.isArray(sp.sport) ? sp.sport[0] : sp.sport;
   const sportKey = isSport(raw) ? raw : "nba";
   const plan = await currentPlan();
-  const list = games(sportKey);
+  const { cards, error } = await gameCards(sportKey, plan);
   return (
     <>
-      <h1>Games today</h1>
-      <p className="muted sm">{getSport(sportKey).name}: {list.length} games. Times in UTC.</p>
+      <h1>Games</h1>
+      <p className="muted sm">{getSport(sportKey).name}: {cards.length} upcoming games. Times in UTC.</p>
       <div className="toolbar"><SportTabs active={sportKey} base="/games" /></div>
-      {list.length === 0 ? (
-        <div className="card" role="status"><h3>No games today</h3><p className="muted sm">Check another sport.</p></div>
+      {error ? (
+        <div className="banner" role="alert"><span>Live odds are unavailable right now. {error}</span></div>
+      ) : cards.length === 0 ? (
+        <div className="card" role="status"><h3>No games scheduled</h3><p className="muted sm">Nothing on the slate for this sport. Check another one.</p></div>
       ) : (
         <div className="grid grid-3">
-          {list.map((g) => {
-            const home = team(g.homeId);
-            const away = team(g.awayId);
-            const open = isUnlocked(g, plan);
-            return (
-              <Link key={g.id} href={`/games/${g.id}`} className="card game">
-                <span className="xs muted"><time dateTime={g.startAt}>{new Date(g.startAt).toUTCString().slice(17, 22)} UTC</time> · {propCount(g.id)} props {open ? "" : "· 🔒 Pro"}</span>
-                <span className="teams"><span>{away.city} {away.name}</span><span className="muted xs">at</span><span>{home.city} {home.name}</span></span>
-              </Link>
-            );
-          })}
+          {cards.map(({ game: g, home, away, props, unlocked }) => (
+            <Link key={g.id} href={`/games/${g.id}`} className="card game">
+              <span className="xs muted"><time dateTime={g.startAt}>{new Date(g.startAt).toUTCString().slice(0, 22)} UTC</time> · {props} props {unlocked ? "" : "· 🔒 Pro"}</span>
+              <span className="teams"><span>{away.city} {away.name}</span><span className="muted xs">at</span><span>{home.city} {home.name}</span></span>
+            </Link>
+          ))}
         </div>
       )}
     </>

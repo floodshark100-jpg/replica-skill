@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { board, propDetail, games, isUnlocked, consensusLine, seed, matchups, SPORTS } from "../../lib/data.ts";
+import { board, propDetail, games, isUnlocked, consensusLine, seed, matchups } from "../../lib/demo.ts";
+import { SPORTS } from "../../lib/seed.ts";
 
 test("seed is deterministic for the same day", () => {
   const a = JSON.stringify(seed(new Date("2026-10-10T12:00:00Z")).props.slice(0, 5));
@@ -35,9 +36,9 @@ test("free plan gets numbers for the first game only, and none for the rest", ()
 test("locked player page returns no detail on free", () => {
   const lockedRow = board({ sport: "nba", plan: "free" }).rows.find((r) => r.locked)!;
   const d = propDetail(lockedRow.player.id, lockedRow.market.key, "free");
-  assert.ok(d && "locked" in d);
+  assert.ok(d && d.kind === "locked");
   const p = propDetail(lockedRow.player.id, lockedRow.market.key, "pro");
-  assert.ok(p && !("locked" in p) && p.log.length > 0);
+  assert.ok(p && p.kind === "demo" && p.log.length > 0);
 });
 
 test("sorting by rating is descending with locked rows last", () => {
@@ -53,7 +54,7 @@ test("filters: market, search, opponent, min rating", () => {
   const one = board({ sport: "nba", plan: "pro" }).rows[0];
   const byName = board({ sport: "nba", q: one.player.name.toUpperCase(), plan: "pro" }).rows;
   assert.ok(byName.length > 0 && byName.every((r) => r.player.id === one.player.id));
-  assert.ok(board({ sport: "nba", opp: one.opp.abbr.toLowerCase(), plan: "pro" }).rows.every((r) => r.opp.id === one.opp.id));
+  assert.ok(board({ sport: "nba", opp: one.opp!.abbr.toLowerCase(), plan: "pro" }).rows.every((r) => r.opp!.id === one.opp!.id));
   assert.ok(board({ sport: "nba", minScore: 70, plan: "pro" }).rows.every((r) => (r.score ?? 0) >= 70));
   assert.equal(board({ sport: "nba", q: "zzzz-nobody", plan: "pro" }).total, 0);
 });

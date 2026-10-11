@@ -1,16 +1,19 @@
 import Link from "next/link";
-import { board } from "@/lib/data.ts";
+import { board, mode } from "@/lib/data.ts";
+import { evPct } from "@/lib/format.ts";
 import { RatingBadge, SideTag, Hit } from "@/components/Stat.tsx";
 
-export default function Home() {
-  const top = board({ sport: "nba", plan: "free", sort: "score" }).rows.filter((r) => !r.locked).slice(0, 3);
+export default async function Home() {
+  const live = mode() === "live";
+  const top = (await board({ sport: "nba", plan: "free", sort: live ? "ev" : "score" })).rows.filter((r) => !r.locked).slice(0, 3);
   return (
     <>
       <section className="hero">
         <h1>Find the prop worth betting before the line moves.</h1>
         <p>
-          Every player prop today across four sports, scored 0 to 100 with a rating that shows its working. Hit rates, matchups and
-          prices from every book on one fast page.
+          {live
+            ? "Every player prop today across four sports, with every book's price side by side and what each one is worth against the no-vig market."
+            : "Every player prop today across four sports, scored 0 to 100 with a rating that shows its working. Hit rates, matchups and prices from every book on one fast page."}
         </p>
         <div className="row">
           <Link className="btn btn-primary btn-lg" href="/props">Open today&apos;s props</Link>
@@ -18,18 +21,18 @@ export default function Home() {
         </div>
       </section>
 
-      <section aria-labelledby="top-h">
-        <h2 id="top-h">Top rated right now</h2>
+      {top.length > 0 && <section aria-labelledby="top-h">
+        <h2 id="top-h">{live ? "Best value right now" : "Top rated right now"}</h2>
         <div className="grid grid-3">
           {top.map((r) => (
             <Link key={r.id} href={`/player/${r.player.id}?market=${r.market.key}`} className="card game">
-              <div className="row"><RatingBadge score={r.score} /><SideTag side={r.side} /> <span className="mono">{r.line}</span> <span className="muted sm">{r.market.label}</span></div>
+              <div className="row">{r.hasStats && <RatingBadge score={r.score} />}<SideTag side={r.side} /> <span className="mono">{r.line}</span> <span className="muted sm">{r.market.label}</span></div>
               <strong>{r.player.name}</strong>
-              <span className="xs muted">{r.team.abbr} {r.home ? "vs" : "@"} {r.opp.abbr} · L10 <Hit r={r.l10} /></span>
+              <span className="xs muted">{r.gameLabel} · {r.hasStats ? <>L10 <Hit r={r.l10} /></> : <>EV {evPct(r.ev)}</>}</span>
             </Link>
           ))}
         </div>
-      </section>
+      </section>}
 
       <section aria-labelledby="how-h">
         <h2 id="how-h">How it works</h2>

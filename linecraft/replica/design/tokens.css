@@ -1,0 +1,16 @@
+/* Generated from tokens.json. Components use these, never raw values. */
+:root {
+  --bg: #0e1116; --surface: #161a21; --surface-2: #1e232c; --border: #2a303a; --border-input: #6f7a89;
+  --text: #eef1f5; --text-muted: #9aa4b2; --accent: #f4b740; --on-accent: #1b1404;
+  --danger: #ff7a7a; --success: #43d39e; --warning: #f4b740; --neutral: #b9c2cf;
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --fs-xs: 12px; --lh-xs: 16px; --fs-sm: 14px; --lh-sm: 20px; --fs-base: 16px; --lh-base: 24px;
+  --fs-lg: 20px; --lh-lg: 28px; --fs-xl: 28px; --lh-xl: 34px; --fs-display: 44px; --lh-display: 48px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.25);
+  --shadow-pop: 0 12px 32px rgba(0,0,0,.5);
+  --t-fast: 120ms; --t-base: 200ms; --ease: cubic-bezier(.2,.8,.2,1);
+  --content-max: 1280px; --header-h: 56px;
+}

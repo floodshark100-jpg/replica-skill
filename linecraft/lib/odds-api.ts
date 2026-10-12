@@ -11,6 +11,9 @@ export interface OddsApiConfig {
   ttlSeconds: number;
   maxEvents: number;
   hoursAhead: number;
+  // arbitrage scanner (/arbs): its own, shorter cache, and games already in play
+  scanTtlSeconds: number;
+  inPlayHours: number;
 }
 
 export function oddsConfig(env: Record<string, string | undefined> = process.env): OddsApiConfig | null {
@@ -28,6 +31,8 @@ export function oddsConfig(env: Record<string, string | undefined> = process.env
     ttlSeconds: int(env.ODDS_API_TTL_SECONDS, 1800, 60, 86400),
     maxEvents: int(env.ODDS_API_MAX_EVENTS, 6, 1, 30),
     hoursAhead: int(env.ODDS_API_HOURS_AHEAD, 36, 1, 168),
+    scanTtlSeconds: int(env.ODDS_API_SCAN_TTL_SECONDS, 120, 30, 3600),
+    inPlayHours: int(env.ODDS_API_INPLAY_HOURS, 4, 0, 12),
   };
 }
 
@@ -79,12 +84,14 @@ function explain(status: number, body: string): string {
   return `The odds API returned ${status}.`;
 }
 
-async function get<T>(cfg: OddsApiConfig, path: string, params: Record<string, string>, fetchImpl: FetchLike): Promise<{ data: T; usage: Usage }> {
+async function get<T>(cfg: OddsApiConfig, path: string, params: Record<string, string>, fetchImpl: FetchLike, revalidate: number): Promise<{ data: T; usage: Usage }> {
   const qs = new URLSearchParams({ ...params, apiKey: cfg.key });
   let res: Response;
   try {
-    // `next.revalidate` lets Next share the cached response across server instances
-    res = await fetchImpl(`${cfg.baseUrl}${path}?${qs}`, { next: { revalidate: cfg.ttlSeconds }, signal: AbortSignal.timeout(10_000) });
+    // `next.revalidate` lets Next share the cached response across server instances. Next serves a
+    // stale entry while it refetches in the background, so `revalidate` 0 (the arbitrage scan) skips it.
+    const cache: RequestInit & { next?: { revalidate?: number } } = revalidate > 0 ? { next: { revalidate } } : { cache: "no-store" };
+    res = await fetchImpl(`${cfg.baseUrl}${path}?${qs}`, { ...cache, signal: AbortSignal.timeout(10_000) });
   } catch (e) {
     throw new OddsApiError(`Couldn't reach the odds API (${e instanceof Error ? e.name : "network error"}).`, 0);
   }
@@ -97,20 +104,22 @@ async function get<T>(cfg: OddsApiConfig, path: string, params: Record<string, s
   return { data: (await res.json()) as T, usage };
 }
 
-export function listEvents(cfg: OddsApiConfig, sportKey: string, now: Date, fetchImpl: FetchLike = fetch) {
+// `startedWithinHours` > 0 also lists games that started that long ago (in play).
+// `revalidate` is how long Next may reuse the response; 0 bypasses Next's cache (the scanner).
+export function listEvents(cfg: OddsApiConfig, sportKey: string, now: Date, fetchImpl: FetchLike = fetch, startedWithinHours = 0, revalidate = cfg.ttlSeconds) {
   return get<ApiEvent[]>(cfg, `/v4/sports/${encodeURIComponent(sportKey)}/events`, {
-    commenceTimeFrom: isoSeconds(now),
+    commenceTimeFrom: isoSeconds(new Date(now.getTime() - startedWithinHours * 3600_000)),
     commenceTimeTo: isoSeconds(new Date(now.getTime() + cfg.hoursAhead * 3600_000)),
     dateFormat: "iso",
-  }, fetchImpl);
+  }, fetchImpl, revalidate);
 }
 
-export function eventOdds(cfg: OddsApiConfig, sportKey: string, eventId: string, markets: string[], fetchImpl: FetchLike = fetch) {
+export function eventOdds(cfg: OddsApiConfig, sportKey: string, eventId: string, markets: string[], fetchImpl: FetchLike = fetch, revalidate = cfg.ttlSeconds) {
   const where: Record<string, string> = cfg.bookmakers ? { bookmakers: cfg.bookmakers } : { regions: cfg.regions };
   return get<ApiEventOdds>(cfg, `/v4/sports/${encodeURIComponent(sportKey)}/events/${encodeURIComponent(eventId)}/odds`, {
     ...where,
     markets: markets.join(","),
     oddsFormat: "american",
     dateFormat: "iso",
-  }, fetchImpl);
+  }, fetchImpl, revalidate);
 }

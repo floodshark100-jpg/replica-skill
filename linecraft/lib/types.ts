@@ -1,6 +1,7 @@
 // Shapes every screen reads, whichever source (demo seed or live odds) fills them.
 import type { SportKey, Market, Team, Player, Game, BookLine } from "./seed.ts";
 import type { HitRate, Rating, Side, MarketPrice } from "./stats.ts";
+import type { Opportunity, ScanOptions } from "./arbs.ts";
 
 export type Plan = "free" | "pro";
 export type Mode = "demo" | "live";
@@ -110,3 +111,39 @@ export interface LockedDetail {
 }
 
 export type Detail = DemoDetail | LiveDetail | LockedDetail;
+
+// The arbitrage scanner (/arbs): one row per discrepancy found on a prop.
+export interface ArbQuery extends ScanOptions {
+  sport: SportKey;
+  kind?: Opportunity["kind"];
+  plan: Plan;
+}
+
+export interface ArbRow {
+  id: string;
+  sport: SportKey;
+  gameId: string;
+  gameLabel: string;
+  startAt: string;
+  inPlay: boolean;
+  player: Player;
+  market: Market;
+  kind: Opportunity["kind"];
+  locked: boolean;
+  // null when locked
+  opp: Opportunity | null;
+}
+
+export interface ArbResult {
+  rows: ArbRow[];
+  total: number;
+  locked: number;
+  games: number;
+  inPlay: number;
+  // when these quotes were fetched, and when the next fetch may happen (live only)
+  fetchedAt: string | null;
+  nextAt: string | null;
+  // API credits left on the key after the last fetch (live only)
+  remaining: number | null;
+  error?: string;
+}

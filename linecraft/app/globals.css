@@ -152,5 +152,12 @@ footer a { color: var(--text-muted); }
   .top .wrap { gap: var(--s3); }
   .hide-sm { display: none; }
   th, td { padding: var(--s2); }
+  /* arbitrage table: each row becomes a card so both legs stay on screen */
+  .arb-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .arb-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) var(--s3); padding: var(--s3); border-bottom: 1px solid var(--border); }
+  .arb-table td { display: block; padding: 0; border: 0; }
+  .arb-table td:first-child { grid-column: 1 / -1; }
+  .arb-table td.num { text-align: left; }
+  .arb-table td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-xs); color: var(--text-muted); font-family: var(--font-sans); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

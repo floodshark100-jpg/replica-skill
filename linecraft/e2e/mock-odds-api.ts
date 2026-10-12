@@ -6,9 +6,18 @@ import { EVENTS, ODDS } from "../tests/fixtures/odds-api.ts";
 
 const port = Number(process.argv[2] ?? 3201);
 const at = (i: number) => new Date(Date.now() + (2 + i) * 3600_000).toISOString().replace(/\.\d{3}Z$/, "Z");
-const shift = <T extends { id: string; commence_time: string }>(e: T): T => {
+const ago = (s: number) => new Date(Date.now() - s * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
+// e0z is in play: started 30 minutes ago, so only the arbitrage scan picks it up.
+// Its books' timestamps move too: Book A fresh, Book B five minutes stale.
+const shift = <T extends { id: string; commence_time: string; bookmakers?: { key: string; last_update?: string; markets: { last_update?: string }[] }[] }>(e: T): T => {
   const i = EVENTS.findIndex((x) => x.id === e.id);
-  return e.id === "e0z" ? e : { ...e, commence_time: at(i === 1 ? 0 : 1) };
+  if (e.id !== "e0z") return { ...e, commence_time: at(i === 1 ? 0 : 1) };
+  const stamp = (key: string) => ago(key === "booka" ? 20 : 300);
+  return {
+    ...e,
+    commence_time: ago(30 * 60),
+    ...(e.bookmakers && { bookmakers: e.bookmakers.map((b) => ({ ...b, last_update: stamp(b.key), markets: b.markets.map((m) => ({ ...m, last_update: stamp(b.key) })) })) }),
+  };
 };
 
 createServer((req, res) => {

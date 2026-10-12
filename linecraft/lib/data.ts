@@ -3,9 +3,10 @@
 // A live failure is reported as an error, never papered over with demo data.
 import { SPORTS, type SportKey, type Sport, type Market, type Team, type Player, type Game, type BookLine } from "./seed.ts";
 import { oddsConfig } from "./odds-api.ts";
+import { DEFAULT_SCAN } from "./arbs.ts";
 import * as demo from "./demo.ts";
 import * as live from "./live.ts";
-import type { Mode, Plan, BoardQuery, BoardResult, GameCard, Detail } from "./types.ts";
+import type { Mode, Plan, BoardQuery, BoardResult, GameCard, Detail, ArbQuery, ArbResult } from "./types.ts";
 
 export * from "./types.ts";
 export type { SportKey, Sport, Market, Team, Player, Game, BookLine };
@@ -13,6 +14,7 @@ export type { HitRate, Rating, Side, MarketPrice } from "./stats.ts";
 export type { MatchupRow } from "./demo.ts";
 export { SPORTS };
 export { MIN_SAMPLE } from "./stats.ts";
+export { DEFAULT_SCAN, splitStake, quoteAge, type Opportunity } from "./arbs.ts";
 
 export function mode(): Mode {
   return oddsConfig() ? "live" : "demo";
@@ -21,6 +23,12 @@ export function mode(): Mode {
 // How far ahead the live slate looks, in hours (null in demo mode).
 export function lookAheadHours(): number | null {
   return oddsConfig()?.hoursAhead ?? null;
+}
+
+// How often the arbitrage scan may refetch, and how long after the start a game counts as in play (live only).
+export function scanSettings(): { seconds: number; inPlayHours: number } | null {
+  const cfg = oddsConfig();
+  return cfg ? { seconds: cfg.scanTtlSeconds, inPlayHours: cfg.inPlayHours } : null;
 }
 
 export function isSport(s: string | undefined | null): s is SportKey {
@@ -33,6 +41,30 @@ export function sport(key: SportKey): Sport {
 export async function board(q: BoardQuery): Promise<BoardResult> {
   const cfg = oddsConfig();
   return cfg ? live.board(cfg, q) : demo.board(q);
+}
+
+// Scanner settings from URL params (percent values), clamped; shared by /arbs and /api/arbs.
+export function arbQuery(get: (k: string) => string | undefined | null, plan: Plan): ArbQuery & { stake: number } {
+  const num = (k: string, d: number, lo: number, hi: number) => {
+    const v = get(k);
+    const n = v === undefined || v === null || v === "" ? NaN : Number(v);
+    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d;
+  };
+  const sportRaw = get("sport");
+  const kind = get("kind");
+  return {
+    sport: isSport(sportRaw) ? sportRaw : "nba",
+    kind: kind === "arb" || kind === "middle" ? kind : undefined,
+    minMargin: num("min", DEFAULT_SCAN.minMargin * 100, -5, 20) / 100,
+    maxMiddleCost: num("cost", DEFAULT_SCAN.maxMiddleCost * 100, 0, 10) / 100,
+    stake: Math.round(num("stake", 100, 1, 100_000)),
+    plan,
+  };
+}
+
+export async function arbs(q: ArbQuery): Promise<ArbResult> {
+  const cfg = oddsConfig();
+  return cfg ? live.arbs(cfg, q) : demo.arbs(q);
 }
 
 export async function gameCards(sportKey: SportKey, plan: Plan): Promise<{ cards: GameCard[]; error?: string }> {

@@ -1,5 +1,7 @@
 // Filtering and sorting shared by every source.
-import type { PropRow, BoardQuery, BoardResult, SortKey } from "./types.ts";
+import type { PropRow, BoardQuery, BoardResult, SortKey, ArbQuery, ArbRow } from "./types.ts";
+import type { BookLine, Market, Player, SportKey } from "./seed.ts";
+import { findOpportunities } from "./arbs.ts";
 
 function sortValue(r: PropRow, key: SortKey): number | string | null {
   switch (key) {
@@ -48,5 +50,35 @@ export function applyQuery(all: PropRow[], q: BoardQuery): BoardResult {
     const c = va < vb ? -1 : 1;
     return dir === "asc" ? c : -c;
   });
+  return { rows, total: rows.length, locked: rows.filter((r) => r.locked).length };
+}
+
+export interface ScanItem {
+  id: string;
+  sport: SportKey;
+  gameId: string;
+  gameLabel: string;
+  startAt: string;
+  inPlay: boolean;
+  player: Player;
+  market: Market;
+  books: BookLine[];
+  locked: boolean;
+}
+
+// Every arb and middle across the props, best margin first. Locked rows are
+// counted but carry no prices: a free viewer never receives them.
+export function arbRows(items: ScanItem[], q: ArbQuery): { rows: ArbRow[]; total: number; locked: number } {
+  const rows: ArbRow[] = [];
+  for (const it of items) {
+    for (const opp of findOpportunities(it.books, q)) {
+      if (q.kind && opp.kind !== q.kind) continue;
+      rows.push({
+        id: `${it.id}~${opp.kind}`, sport: it.sport, gameId: it.gameId, gameLabel: it.gameLabel, startAt: it.startAt, inPlay: it.inPlay,
+        player: it.player, market: it.market, kind: opp.kind, locked: it.locked, opp: it.locked ? null : opp,
+      });
+    }
+  }
+  rows.sort((a, b) => Number(a.locked) - Number(b.locked) || (b.opp?.margin ?? 0) - (a.opp?.margin ?? 0) || a.player.name.localeCompare(b.player.name));
   return { rows, total: rows.length, locked: rows.filter((r) => r.locked).length };
 }

@@ -3,14 +3,19 @@
 // probability, EV, best price) and no hit rates until a stats feed is added.
 import { SPORTS, type SportKey, type Market, type Team, type Player, type Game, type BookLine } from "./seed.ts";
 import { marketPrice } from "./stats.ts";
-import { applyQuery } from "./board.ts";
+import { applyQuery, arbRows } from "./board.ts";
 import { listEvents, eventOdds, OddsApiError, type OddsApiConfig, type ApiEventOdds, type FetchLike } from "./odds-api.ts";
-import type { Plan, PropRow, BoardQuery, BoardResult, GameCard, Detail, LineQuote } from "./types.ts";
+import type { Plan, PropRow, BoardQuery, BoardResult, GameCard, Detail, LineQuote, ArbQuery, ArbResult } from "./types.ts";
 
 export interface LiveProp { id: string; gameId: string; playerId: string; market: string; books: BookLine[] }
 
+// "board": upcoming games, cached for ODDS_API_TTL_SECONDS (props, games, player pages).
+// "scan": also games in play, cached for the shorter ODDS_API_SCAN_TTL_SECONDS (/arbs).
+export type SnapshotKind = "board" | "scan";
+
 export interface Snapshot {
   sport: SportKey;
+  kind: SnapshotKind;
   fetchedAt: string;
   teams: Map<string, Team>;
   players: Map<string, Player>;
@@ -74,7 +79,8 @@ export function mapEventOdds(sport: SportKey, ev: ApiEventOdds, teams: Map<strin
         if (!players.has(pid)) players.set(pid, { id: pid, teamId: "", sport, name: pair.name, position: "" });
         const id = `${game.id}~${pid}~${m.key}`;
         const prop = byKey.get(id) ?? { id, gameId: game.id, playerId: pid, market: m.key, books: [] };
-        prop.books.push({ book: bk.title, line: pair.point, over: pair.over, under: pair.under });
+        const updatedAt = mk.last_update ?? bk.last_update;
+        prop.books.push({ book: bk.title, line: pair.point, over: pair.over, under: pair.under, ...(updatedAt ? { updatedAt } : {}) });
         byKey.set(id, prop);
       }
     }
@@ -82,17 +88,21 @@ export function mapEventOdds(sport: SportKey, ev: ApiEventOdds, teams: Map<strin
   return { game, props: [...byKey.values()] };
 }
 
-export async function fetchSnapshot(cfg: OddsApiConfig, sport: SportKey, now: Date, fetchImpl?: FetchLike): Promise<Snapshot> {
+export async function fetchSnapshot(cfg: OddsApiConfig, sport: SportKey, now: Date, fetchImpl?: FetchLike, kind: SnapshotKind = "board"): Promise<Snapshot> {
   const s = SPORTS.find((x) => x.key === sport)!;
-  const { data: events, usage } = await listEvents(cfg, s.oddsApi, now, fetchImpl);
-  const upcoming = events.filter((e) => Date.parse(e.commence_time) >= now.getTime()).sort((a, b) => a.commence_time.localeCompare(b.commence_time)).slice(0, cfg.maxEvents);
+  const startedWithin = kind === "scan" ? cfg.inPlayHours : 0;
+  // the scan must see current prices: only the in-memory cache below holds it, never Next's fetch cache
+  const ttl = kind === "scan" ? 0 : cfg.ttlSeconds;
+  const { data: events, usage } = await listEvents(cfg, s.oddsApi, now, fetchImpl, startedWithin, ttl);
+  const from = now.getTime() - startedWithin * 3600_000;
+  const upcoming = events.filter((e) => Date.parse(e.commence_time) >= from).sort((a, b) => a.commence_time.localeCompare(b.commence_time)).slice(0, cfg.maxEvents);
   const teams = new Map<string, Team>();
   const players = new Map<string, Player>();
   const games: Game[] = [];
   const props: LiveProp[] = [];
   const warnings: string[] = [];
   let remaining = usage.remaining;
-  const results = await Promise.allSettled(upcoming.map((e) => eventOdds(cfg, s.oddsApi, e.id, s.markets.map((m) => m.oddsApi), fetchImpl)));
+  const results = await Promise.allSettled(upcoming.map((e) => eventOdds(cfg, s.oddsApi, e.id, s.markets.map((m) => m.oddsApi), fetchImpl, ttl)));
   results.forEach((r, i) => {
     if (r.status === "fulfilled") {
       const mapped = mapEventOdds(sport, r.value.data, teams, players);
@@ -107,20 +117,29 @@ export async function fetchSnapshot(cfg: OddsApiConfig, sport: SportKey, now: Da
     }
   });
   if (upcoming.length > 0 && warnings.length === upcoming.length) throw new OddsApiError(warnings[0], 0);
-  return { sport, fetchedAt: now.toISOString(), teams, players, games, props, remaining, warnings: [...new Set(warnings)] };
+  return { sport, kind, fetchedAt: now.toISOString(), teams, players, games, props, remaining, warnings: [...new Set(warnings)] };
 }
 
-// One snapshot per sport per TTL, shared by every request on this server.
-const cache = new Map<SportKey, { at: number; ok: boolean; value: Promise<Snapshot> }>();
+// One snapshot per sport and kind per TTL, shared by every request on this server. Kept on
+// globalThis because Next bundles pages and route handlers separately: a plain module-level
+// Map would give /arbs and /api/arbs a cache each, and each would spend credits.
+type CacheEntry = { at: number; ok: boolean; value: Promise<Snapshot> };
+const g = globalThis as typeof globalThis & { __linecraftSnapshots?: Map<string, CacheEntry> };
+const cache = (g.__linecraftSnapshots ??= new Map<string, CacheEntry>());
 const FAILURE_TTL_MS = 60_000;
 
-export function snapshot(cfg: OddsApiConfig, sport: SportKey, now = new Date(), fetchImpl?: FetchLike): Promise<Snapshot> {
-  const hit = cache.get(sport);
-  const ttl = hit?.ok === false ? FAILURE_TTL_MS : cfg.ttlSeconds * 1000;
+export function snapshotTtlMs(cfg: OddsApiConfig, kind: SnapshotKind): number {
+  return (kind === "scan" ? cfg.scanTtlSeconds : cfg.ttlSeconds) * 1000;
+}
+
+export function snapshot(cfg: OddsApiConfig, sport: SportKey, now = new Date(), fetchImpl?: FetchLike, kind: SnapshotKind = "board"): Promise<Snapshot> {
+  const key = `${sport}|${kind}`;
+  const hit = cache.get(key);
+  const ttl = hit?.ok === false ? FAILURE_TTL_MS : snapshotTtlMs(cfg, kind);
   if (hit && now.getTime() - hit.at < ttl) return hit.value;
-  const entry = { at: now.getTime(), ok: true, value: fetchSnapshot(cfg, sport, now, fetchImpl) };
+  const entry = { at: now.getTime(), ok: true, value: fetchSnapshot(cfg, sport, now, fetchImpl, kind) };
   entry.value.catch(() => { entry.ok = false; });
-  cache.set(sport, entry);
+  cache.set(key, entry);
   return entry.value;
 }
 
@@ -212,4 +231,32 @@ export async function propDetail(cfg: OddsApiConfig, playerId: string, marketKey
     .sort((a, b) => (a[0] === row.line ? -1 : b[0] === row.line ? 1 : a[0] - b[0]))
     .map(([line, books]) => ({ line, books, price: marketPrice(books) }));
   return { kind: "live", row, game: g, home: snap.teams.get(g.homeId)!, away: snap.teams.get(g.awayId)!, markets, lines };
+}
+
+// The arbitrage scanner: the "scan" snapshot (games in play included, short cache).
+export async function arbs(cfg: OddsApiConfig, q: ArbQuery, now = new Date()): Promise<ArbResult> {
+  try {
+    const snap = await snapshot(cfg, q.sport, now, undefined, "scan");
+    const first = firstGameId(snap);
+    const games = new Map(snap.games.map((g) => [g.id, g]));
+    const items = snap.props.map((p) => {
+      const g = games.get(p.gameId)!;
+      return {
+        id: p.id, sport: snap.sport, gameId: g.id, gameLabel: `${snap.teams.get(g.awayId)!.abbr} @ ${snap.teams.get(g.homeId)!.abbr}`, startAt: g.startAt,
+        inPlay: Date.parse(g.startAt) <= now.getTime(), player: snap.players.get(p.playerId)!,
+        market: SPORTS.find((s) => s.key === snap.sport)!.markets.find((m) => m.key === p.market)!, books: p.books, locked: q.plan !== "pro" && g.id !== first,
+      };
+    });
+    const fetched = Date.parse(snap.fetchedAt);
+    return {
+      ...arbRows(items, q),
+      games: snap.games.length,
+      inPlay: snap.games.filter((g) => Date.parse(g.startAt) <= now.getTime()).length,
+      fetchedAt: snap.fetchedAt,
+      nextAt: new Date(fetched + snapshotTtlMs(cfg, "scan")).toISOString(),
+      remaining: snap.remaining,
+    };
+  } catch (e) {
+    return { rows: [], total: 0, locked: 0, games: 0, inPlay: 0, fetchedAt: null, nextAt: null, remaining: null, error: e instanceof Error ? e.message : "The odds API failed." };
+  }
 }

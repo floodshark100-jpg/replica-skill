@@ -40,6 +40,26 @@ export const ODDS: Record<string, ApiEventOdds> = {
       },
     ],
   },
+  // in play (only the arbitrage scan fetches it): an arb on Duval, a middle on Abara
+  e0z: {
+    ...EVENTS[2],
+    bookmakers: [
+      {
+        key: "booka", title: "Book A", last_update: "2026-10-11T02:59:00Z",
+        markets: [
+          { key: "player_points", last_update: "2026-10-11T02:58:40Z", outcomes: [o("Over", "Kasimir Duval", 115, 21.5), o("Under", "Kasimir Duval", -140, 21.5)] },
+          { key: "player_assists", last_update: "2026-10-11T02:58:40Z", outcomes: [o("Over", "Nico Abara", -105, 9.5), o("Under", "Nico Abara", -115, 9.5)] },
+        ],
+      },
+      {
+        key: "bookb", title: "Book B", last_update: "2026-10-11T02:50:00Z",
+        markets: [
+          { key: "player_points", last_update: "2026-10-11T02:50:00Z", outcomes: [o("Over", "Kasimir Duval", -150, 21.5), o("Under", "Kasimir Duval", 125, 21.5)] },
+          { key: "player_assists", last_update: "2026-10-11T02:50:00Z", outcomes: [o("Over", "Nico Abara", 140, 11.5), o("Under", "Nico Abara", -102, 11.5)] },
+        ],
+      },
+    ],
+  },
   e2b: {
     ...EVENTS[0],
     bookmakers: [

@@ -1,8 +1,8 @@
 // Demo source: fictional seed data with full game logs. Used when no odds API key is set.
 import { buildSeed, SPORTS, type Seed, type SportKey, type Market, type Team, type Player, type Game, type BookLine, type GameLogEntry } from "./seed.ts";
 import { hitRate, average, last, rating, favouredSide, bestOdds, marketPrice } from "./stats.ts";
-import { applyQuery } from "./board.ts";
-import type { Plan, PropRow, BoardQuery, BoardResult, GameCard, Detail } from "./types.ts";
+import { applyQuery, arbRows } from "./board.ts";
+import type { Plan, PropRow, BoardQuery, BoardResult, GameCard, Detail, ArbQuery, ArbResult } from "./types.ts";
 
 let cache: { day: string; seed: Seed } | null = null;
 
@@ -109,6 +109,22 @@ function buildRow(propId: string, plan: Plan): PropRow | null {
 export function board(q: BoardQuery): BoardResult {
   const rows = seed().props.filter((p) => p.gameId.startsWith(`${q.sport}-`)).map((p) => buildRow(p.id, q.plan)!);
   return applyQuery(rows, q);
+}
+
+// The scanner over the seed's book prices. The demo slate hasn't started, so nothing is in play.
+export function arbs(q: ArbQuery): ArbResult {
+  const items = seed().props.filter((p) => p.gameId.startsWith(`${q.sport}-`)).map((prop) => {
+    const g = game(prop.gameId)!;
+    const p = player(prop.playerId)!;
+    const t = team(p.teamId);
+    const home = g.homeId === t.id;
+    const opp = team(home ? g.awayId : g.homeId);
+    return {
+      id: prop.id, sport: q.sport, gameId: g.id, gameLabel: `${t.abbr} ${home ? "vs" : "@"} ${opp.abbr}`, startAt: g.startAt, inPlay: false,
+      player: p, market: market(p.sport, prop.market)!, books: prop.books, locked: !isUnlocked(g, q.plan),
+    };
+  });
+  return { ...arbRows(items, q), games: games(q.sport).length, inPlay: 0, fetchedAt: null, nextAt: null, remaining: null };
 }
 
 export function gameCards(sportKey: SportKey, plan: Plan): GameCard[] {

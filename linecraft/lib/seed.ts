@@ -27,7 +27,8 @@ export interface Team { id: string; sport: SportKey; city: string; name: string;
 export interface Player { id: string; teamId: string; sport: SportKey; name: string; position: string }
 export interface GameLogEntry { date: string; opponentId: string; home: boolean; stats: Record<string, number> }
 export interface Game { id: string; sport: SportKey; homeId: string; awayId: string; startAt: string }
-export interface BookLine { book: string; line: number; over: number; under: number }
+// updatedAt: when the book last moved this market (live odds only)
+export interface BookLine { book: string; line: number; over: number; under: number; updatedAt?: string }
 export interface PropMarket { id: string; gameId: string; playerId: string; market: string; books: BookLine[] }
 export interface DefenseRow { teamId: string; position: string; market: string; allowed: number; rank: number }
 

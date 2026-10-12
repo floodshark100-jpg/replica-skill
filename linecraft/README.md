@@ -33,6 +33,28 @@ credits (NBA 0, no games in the window; NFL 4, one game; MLB 6, two games; NHL 9
 Pick a plan to match, or raise `ODDS_API_TTL_SECONDS` / lower `ODDS_API_MAX_EVENTS`. A sport is only fetched when someone opens it, and failures are retried after a minute,
 not on every request.
 
+## Arbitrage scanner (`/arbs`)
+
+Compares every book's price on every player prop and lists:
+
+- **Arbs**: over at one book and under at another at the same line, priced so a split stake pays the same whichever
+  side wins. Shows the margin, the stake on each side for your total, and the payout.
+- **Middles**: over at a lower line and under at a higher one at different books. A result between the lines wins
+  both bets; outside it you lose a little (capped at 3% by default, `cost` in the URL).
+
+In live mode it also scans **games in play** (started in the last `ODDS_API_INPLAY_HOURS`, default 4), which the
+props board leaves out. Each price shows how long ago that book last moved the market, in red past two minutes: a
+stale book next to a fresh one is the usual reason an arb exists, and the usual reason it's gone when you get there.
+`min=-1` in the URL (or "Near-arbs" in the form) also shows pairs within 1% of an arb. JSON: `/api/arbs?sport=nhl`.
+Free plan: the first game of the slate, as on the board.
+
+**Freshness and credits.** The scan has its own cache, `ODDS_API_SCAN_TTL_SECONDS` (default 120, minimum 30), shared by
+every viewer on the server, and skips Next's fetch cache, which can hand back a stale response while it refetches. A
+scan costs the same as a board refresh: on 12 Oct 2026 (NHL with one game in play) NHL 9 credits, MLB 6, NFL 4, NBA 0.
+"Auto-refresh" on the page is off by default; left on with one sport open it costs about (credits per scan) x 30 an
+hour (about 270 an hour for NHL at 2 minutes), so the 500-credit free tier lasts under two hours. The page shows the
+credits left after each scan.
+
 ## Run it
 
 ```bash
@@ -51,13 +73,14 @@ Free vs Pro gating works out of the box: `/pricing` -> "Start free trial" flips 
 ## Map
 
 ```
-app/                 routes: / props player/[id] games games/[id] matchups slip pricing account signin api/props api/plan
+app/                 routes: / props player/[id] games games/[id] arbs matchups slip pricing account signin api/props api/arbs api/plan
 components/          PropsTable, GameLogChart, SaveButton, Stat (rating badge, hit cell), SportTabs, Nav, Logo
 lib/stats.ts         hit rates (pushes excluded), the rating, odds maths
 lib/data.ts          the data layer every screen reads; picks demo or live
 lib/demo.ts          demo source over lib/seed.ts (fictional leagues and today's slate)
 lib/live.ts          live source: maps The Odds API events and player props, caches per sport
 lib/odds-api.ts      the API client (config, quota headers, errors without the key)
+lib/arbs.ts          arb and middle maths: overround, margin, stake split, quote age
 replica/             the Replica pipeline output: recon, architecture, schema.sql, design tokens, test plan,
                      bugs, parity, review research, brand, launch, deploy checklist
 ```

@@ -36,7 +36,7 @@ test.describe("live odds mode (mock Odds API)", () => {
     await page.goto("/games?sport=nhl");
     await expect(page.getByRole("heading", { name: "No games scheduled" })).toBeVisible();
     await page.goto("/props?sport=nhl");
-    await expect(page.getByText(/No player props are posted for this sport yet/)).toBeVisible();
+    await expect(page.getByText(/No hockey games in the next 36 hours/)).toBeVisible();
   });
 
   test("matchups explains it needs a stats feed", async ({ page }) => {

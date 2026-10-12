@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { board, isSport, mode, sport as getSport, SORTS, type SortKey } from "@/lib/data.ts";
+import { board, isSport, lookAheadHours, mode, sport as getSport, SORTS, type SortKey } from "@/lib/data.ts";
 import { currentPlan } from "@/lib/plan.ts";
 import { SportTabs } from "@/components/SportTabs.tsx";
 import { PropsTable } from "@/components/PropsTable.tsx";
@@ -25,9 +25,15 @@ export default async function PropsPage({ searchParams }: { searchParams: SP }) 
   const side = one(sp.side) === "over" || one(sp.side) === "under" ? (one(sp.side) as "over") : undefined;
   const opp = one(sp.opp)?.slice(0, 4);
 
-  const { rows, total, locked, error } = await board({ sport: sportKey, market: marketKey, q, opp, minScore, side, sort, dir, plan });
+  const { rows, total, locked, games, error } = await board({ sport: sportKey, market: marketKey, q, opp, minScore, side, sort, dir, plan });
 
   const open = rows.filter((r) => !r.locked);
+  // an unfiltered live board that's empty: either no games in the window, or books haven't posted props yet
+  const liveEmpty = live && total === 0 && !q && !marketKey && !side && !opp
+    ? games === 0
+      ? `No ${s.name.toLowerCase()} games in the next ${lookAheadHours()} hours. Try another sport.`
+      : "No player props are posted for this sport yet. Books usually post them the day of the game."
+    : undefined;
   const lockedGames = [...new Map(rows.filter((r) => r.locked).map((r) => [r.gameId, r.gameLabel])).values()];
 
   const query: Record<string, string> = { sport: sportKey };
@@ -74,7 +80,7 @@ export default async function PropsPage({ searchParams }: { searchParams: SP }) 
       {error && (
         <div className="banner" role="alert"><span>Live odds are unavailable right now. {error}</span></div>
       )}
-      {!error && <PropsTable rows={open} sort={sort} dir={dir} path="/props" query={query} caption={`${s.name} player props, sorted by ${sort}`} empty={locked > 0 ? "Nothing open matches on the free plan." : live && total === 0 && !q && !marketKey ? "No player props are posted for this sport yet. Books usually post them the day of the game." : undefined} />}
+      {!error && <PropsTable rows={open} sort={sort} dir={dir} path="/props" query={query} caption={`${s.name} player props, sorted by ${sort}`} empty={locked > 0 ? "Nothing open matches on the free plan." : liveEmpty} />}
       {locked > 0 && (
         <section className="banner" aria-labelledby="locked-h">
           <div>

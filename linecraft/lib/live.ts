@@ -160,7 +160,7 @@ function buildRow(snap: Snapshot, prop: LiveProp, plan: Plan): PropRow {
 export async function board(cfg: OddsApiConfig, q: BoardQuery): Promise<BoardResult> {
   try {
     const snap = await snapshot(cfg, q.sport);
-    return applyQuery(snap.props.map((p) => buildRow(snap, p, q.plan)), q);
+    return { ...applyQuery(snap.props.map((p) => buildRow(snap, p, q.plan)), q), games: snap.games.length };
   } catch (e) {
     return { rows: [], total: 0, locked: 0, error: e instanceof Error ? e.message : "The odds API failed." };
   }

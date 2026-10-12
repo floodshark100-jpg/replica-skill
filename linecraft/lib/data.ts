@@ -18,6 +18,11 @@ export function mode(): Mode {
   return oddsConfig() ? "live" : "demo";
 }
 
+// How far ahead the live slate looks, in hours (null in demo mode).
+export function lookAheadHours(): number | null {
+  return oddsConfig()?.hoursAhead ?? null;
+}
+
 export function isSport(s: string | undefined | null): s is SportKey {
   return SPORTS.some((x) => x.key === s);
 }

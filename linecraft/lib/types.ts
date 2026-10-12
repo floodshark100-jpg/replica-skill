@@ -58,6 +58,8 @@ export interface BoardResult {
   rows: PropRow[];
   total: number;
   locked: number;
+  // live only: games on the slate, so an empty board can tell "no games" from "no props posted yet"
+  games?: number;
   // set when the live source failed; rows are then empty, never filled with demo data
   error?: string;
 }

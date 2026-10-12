@@ -27,8 +27,10 @@ Optional settings (regions or specific books, cache time, games per sport) are i
 
 **Quota.** Each refresh of a sport costs about (player-prop markets that come back) x (regions) per game. With the
 defaults (6 games, 30-minute cache, `us`) one refresh of all four sports costs up to ~90 credits, so a site that
-stays busy all day can use a few thousand a day. Pick a plan to match, or raise `ODDS_API_TTL_SECONDS` / lower
-`ODDS_API_MAX_EVENTS`. A sport is only fetched when someone opens it, and failures are retried after a minute,
+stays busy all day can use a few thousand a day. In practice it's usually well under the cap: books post props on game
+day, and a game with nothing posted yet costs nothing. Measured on 12 Oct 2026, one refresh of all four sports cost 19
+credits (NBA 0, no games in the window; NFL 4, one game; MLB 6, two games; NHL 9, three of six games posted).
+Pick a plan to match, or raise `ODDS_API_TTL_SECONDS` / lower `ODDS_API_MAX_EVENTS`. A sport is only fetched when someone opens it, and failures are retried after a minute,
 not on every request.
 
 ## Run it

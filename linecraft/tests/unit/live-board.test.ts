@@ -1,10 +1,16 @@
-import { test } from "node:test";
+import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { oddsConfig } from "../../lib/odds-api.ts";
 import { snapshot, board, propDetail, gameCards, clearCache } from "../../lib/live.ts";
 import { NOW, fakeFetch } from "../fixtures/odds-api.ts";
 
 const cfg = oddsConfig({ ODDS_API_KEY: "k", ODDS_API_TTL_SECONDS: "86400" })!;
+
+// board(), propDetail() and gameCards() read the cache with the current time, so pin the
+// clock to the fixture's NOW; otherwise the primed snapshot expires a day later and they
+// go to the network.
+before(() => mock.timers.enable({ apis: ["Date"], now: NOW }));
+after(() => mock.timers.reset());
 
 // Prime the cache with the fixture so board() reads it instead of the network.
 async function prime() {
@@ -17,6 +23,7 @@ test("live board: market columns, EV side, free plan opens the first game only",
   const pro = await board(cfg, { sport: "nba", plan: "pro", sort: "ev" });
   assert.equal(pro.error, undefined);
   assert.equal(pro.total, 3);
+  assert.equal(pro.games, 2);
   for (const r of pro.rows) {
     assert.equal(r.hasStats, false);
     assert.equal(r.score, null);

@@ -1,0 +1,16 @@
+{
+  "avoid": ["PropFinder", "Prop Finder", "PF rating"],
+  "app_store": {
+    "name": "Linecraft: Player Prop Stats",
+    "subtitle": "Hit rates, matchups, prices",
+    "promotional_text": "Every rating shows its five inputs, so you can see exactly why a prop scores the way it does.",
+    "description": "Linecraft is a research tool for player props. It is not a sportsbook and takes no bets.\n\nEvery prop today across basketball, football, baseball and hockey, with:\n- Hit rates over the last 5, 10 and 20 games and the season\n- Head-to-head against tonight's opponent, home and away splits\n- Opponent rank against the position\n- A 0-100 rating that shows its five inputs and their weights\n- Every book's line and price side by side\n- Alt lines and a saved-props shortlist\n\nFree covers the first game of the day in every sport. Pro opens every game.\n\n21+. If gambling stops being fun, call 1-800-GAMBLER.",
+    "keywords": "props,rate,matchup,odds,nba,nfl,mlb,nhl,research,betting,lines,dfs,pickem,cheatsheet",
+    "whats_new": "Ratings now show how they were built."
+  },
+  "google_play": {
+    "title": "Linecraft: Player Prop Stats",
+    "short_description": "Player prop hit rates, matchups and prices, with a rating that shows its work.",
+    "full_description": "Linecraft is a research tool for player props. It is not a sportsbook and takes no bets.\n\nHit rates, head-to-head, splits, opponent rank and every book's price for each prop today, plus a 0-100 rating that shows its inputs.\n\nFree covers the first game of the day in every sport. Pro opens every game.\n\n21+. If gambling stops being fun, call 1-800-GAMBLER."
+  }
+}

@@ -14,6 +14,8 @@ export interface OddsApiConfig {
   // arbitrage scanner (/arbs): its own, shorter cache, and games already in play
   scanTtlSeconds: number;
   inPlayHours: number;
+  // stop fetching when the account has fewer credits than this left (0 = never stop)
+  minCredits: number;
 }
 
 export function oddsConfig(env: Record<string, string | undefined> = process.env): OddsApiConfig | null {
@@ -33,6 +35,7 @@ export function oddsConfig(env: Record<string, string | undefined> = process.env
     hoursAhead: int(env.ODDS_API_HOURS_AHEAD, 36, 1, 168),
     scanTtlSeconds: int(env.ODDS_API_SCAN_TTL_SECONDS, 120, 30, 3600),
     inPlayHours: int(env.ODDS_API_INPLAY_HOURS, 4, 0, 12),
+    minCredits: int(env.ODDS_API_MIN_CREDITS, 25, 0, 1_000_000),
   };
 }
 
@@ -122,4 +125,10 @@ export function eventOdds(cfg: OddsApiConfig, sportKey: string, eventId: string,
     oddsFormat: "american",
     dateFormat: "iso",
   }, fetchImpl, revalidate);
+}
+
+// The sports list is free (0 credits) and carries the quota headers: used to check
+// whether credits came back (a new month, an upgrade) while fetching is paused.
+export async function quota(cfg: OddsApiConfig, fetchImpl: FetchLike = fetch): Promise<Usage> {
+  return (await get<unknown>(cfg, "/v4/sports", {}, fetchImpl, 0)).usage;
 }

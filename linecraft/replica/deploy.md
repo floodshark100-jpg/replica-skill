@@ -14,7 +14,8 @@ Date: 2026-10-10  Go from user: **not yet**. Nothing has been deployed.
 - [x] contrast: 17 pairs, 0 AA failures
 - [x] `npm audit`: 0 vulnerabilities
 - [x] live odds wired (The Odds API, `ODDS_API_KEY`); live-mode e2e green against a mock
-- [ ] **checked against the real odds API with your key** (market keys accepted, quota per refresh as expected)
+- [x] **checked against the real odds API with your key** (market keys accepted; 19 credits per 4-sport refresh on 12 Oct, NBA 30 on 21 Oct)
+- [x] private live deployment possible: `ACCESS_PASSWORD` gate on every request, credit floor (`ODDS_API_MIN_CREDITS`)
 - [ ] stats feed connected (hit rates, rating and matchups are demo-only until then)
 - [ ] **demo plan cookie removed, Stripe wired** (blocker: anyone can turn on Pro)
 - [ ] privacy policy and terms live, every processor listed
@@ -22,7 +23,8 @@ Date: 2026-10-10  Go from user: **not yet**. Nothing has been deployed.
 - [ ] name checks run (`brand.md`), logo made from the brief
 - [ ] gambling-advertising rules checked for every market you sell in
 
-**Verdict: not ready for production.** Fine to deploy as a public demo (it says "fictional data" in the footer).
+**Verdict: not ready for production.** Fine to deploy as a public demo (it says "fictional data" in the footer),
+or as your own password-protected live scanner (README, "Live scanner: deploy it privately").
 
 ## When you're ready
 

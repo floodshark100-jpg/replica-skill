@@ -55,6 +55,35 @@ scan costs the same as a board refresh: on 12 Oct 2026 (NHL with one game in pla
 hour (about 270 an hour for NHL at 2 minutes), so the 500-credit free tier lasts under two hours. The page shows the
 credits left after each scan.
 
+## Live scanner: deploy it privately
+
+A deployment with your key spends your credits for anyone who can reach it, so lock it first.
+
+1. **Vercel**: Add New > Project > import this repo. Set **Root Directory** to `linecraft`. Framework: Next.js.
+2. **Environment variables** (Project > Settings > Environment Variables, Production):
+
+   | name | value |
+   | --- | --- |
+   | `ODDS_API_KEY` | your key from the-odds-api.com |
+   | `ACCESS_PASSWORD` | a long password you choose; the browser asks for it once (any username) |
+   | `ODDS_API_MIN_CREDITS` | optional, default 25: scanning pauses below this many credits left |
+   | `ODDS_API_SCAN_TTL_SECONDS` | optional, default 120: how often `/arbs` may refetch |
+
+3. **Deploy**, open `https://<project>.vercel.app/arbs?sport=nba`, enter the password. The footer should say
+   "Lines and prices from The Odds API".
+
+With `ACCESS_PASSWORD` set, every page, API route and asset needs the password (`proxy.ts`), and everyone past it sees
+every game (no free-plan lock). For scripts: `curl -u me:PASSWORD https://<project>.vercel.app/api/arbs?sport=nba`.
+Without it the site is open to anyone: only do that with no key (demo mode).
+
+**Credit guard.** After each scan the app knows how many credits are left. Below `ODDS_API_MIN_CREDITS` it stops
+calling the odds endpoints and `/arbs` says "Paused to save credits"; once a minute it checks the free quota
+endpoint (0 credits) and resumes by itself when credits come back (new month or a plan upgrade).
+
+**Serverless caveat.** The scan cache lives in each server instance's memory. Vercel reuses warm instances, but
+under load or after a cold start a second instance fetches its own copy, so real usage can run above the
+per-scan numbers. Watch the "credits left" figure on `/arbs`; the guard is the backstop.
+
 ## Run it
 
 ```bash
@@ -81,6 +110,7 @@ lib/demo.ts          demo source over lib/seed.ts (fictional leagues and today's
 lib/live.ts          live source: maps The Odds API events and player props, caches per sport
 lib/odds-api.ts      the API client (config, quota headers, errors without the key)
 lib/arbs.ts          arb and middle maths: overround, margin, stake split, quote age
+lib/access.ts        the ACCESS_PASSWORD check; proxy.ts applies it to every request
 replica/             the Replica pipeline output: recon, architecture, schema.sql, design tokens, test plan,
                      bugs, parity, review research, brand, launch, deploy checklist
 ```

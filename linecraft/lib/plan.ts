@@ -6,7 +6,10 @@ import type { Plan } from "./data.ts";
 // Stripe webhook (see replica/backend.md); a cookie is never trusted there.
 export const PLAN_COOKIE = "lc_plan";
 
+// A password-protected deployment (ACCESS_PASSWORD, see proxy.ts) is the owner's own
+// scanner: everyone who gets past the password sees every game.
 export async function currentPlan(): Promise<Plan> {
+  if (process.env.ACCESS_PASSWORD?.trim()) return "pro";
   const jar = await cookies();
   return jar.get(PLAN_COOKIE)?.value === "pro" ? "pro" : "free";
 }

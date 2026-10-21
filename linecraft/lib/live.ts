@@ -4,7 +4,7 @@
 import { SPORTS, type SportKey, type Market, type Team, type Player, type Game, type BookLine } from "./seed.ts";
 import { marketPrice } from "./stats.ts";
 import { applyQuery, arbRows } from "./board.ts";
-import { listEvents, eventOdds, OddsApiError, type OddsApiConfig, type ApiEventOdds, type FetchLike } from "./odds-api.ts";
+import { listEvents, eventOdds, quota, OddsApiError, type OddsApiConfig, type ApiEventOdds, type FetchLike } from "./odds-api.ts";
 import type { Plan, PropRow, BoardQuery, BoardResult, GameCard, Detail, LineQuote, ArbQuery, ArbResult } from "./types.ts";
 
 export interface LiveProp { id: string; gameId: string; playerId: string; market: string; books: BookLine[] }
@@ -124,8 +124,29 @@ export async function fetchSnapshot(cfg: OddsApiConfig, sport: SportKey, now: Da
 // globalThis because Next bundles pages and route handlers separately: a plain module-level
 // Map would give /arbs and /api/arbs a cache each, and each would spend credits.
 type CacheEntry = { at: number; ok: boolean; value: Promise<Snapshot> };
-const g = globalThis as typeof globalThis & { __linecraftSnapshots?: Map<string, CacheEntry> };
+const g = globalThis as typeof globalThis & { __linecraftSnapshots?: Map<string, CacheEntry>; __linecraftCredits?: { remaining: number | null } };
 const cache = (g.__linecraftSnapshots ??= new Map<string, CacheEntry>());
+// Credits left after the last call this server made (null until the first).
+const credits = (g.__linecraftCredits ??= { remaining: null });
+
+export function creditsRemaining(): number | null {
+  return credits.remaining;
+}
+
+// Below ODDS_API_MIN_CREDITS, stop spending: a public page left open (or a crawler)
+// would otherwise drain the account. Re-checked on the free quota call each retry.
+async function guardedFetch(cfg: OddsApiConfig, sport: SportKey, now: Date, fetchImpl: FetchLike | undefined, kind: SnapshotKind): Promise<Snapshot> {
+  if (cfg.minCredits > 0 && credits.remaining !== null && credits.remaining < cfg.minCredits) {
+    const u = await quota(cfg, fetchImpl);
+    if (u.remaining !== null) credits.remaining = u.remaining;
+    if (credits.remaining !== null && credits.remaining < cfg.minCredits) {
+      throw new OddsApiError(`Paused to save credits: ${credits.remaining} left, below ODDS_API_MIN_CREDITS (${cfg.minCredits}).`, 429);
+    }
+  }
+  const snap = await fetchSnapshot(cfg, sport, now, fetchImpl, kind);
+  if (snap.remaining !== null) credits.remaining = snap.remaining;
+  return snap;
+}
 const FAILURE_TTL_MS = 60_000;
 
 export function snapshotTtlMs(cfg: OddsApiConfig, kind: SnapshotKind): number {
@@ -137,7 +158,7 @@ export function snapshot(cfg: OddsApiConfig, sport: SportKey, now = new Date(), 
   const hit = cache.get(key);
   const ttl = hit?.ok === false ? FAILURE_TTL_MS : snapshotTtlMs(cfg, kind);
   if (hit && now.getTime() - hit.at < ttl) return hit.value;
-  const entry = { at: now.getTime(), ok: true, value: fetchSnapshot(cfg, sport, now, fetchImpl, kind) };
+  const entry = { at: now.getTime(), ok: true, value: guardedFetch(cfg, sport, now, fetchImpl, kind) };
   entry.value.catch(() => { entry.ok = false; });
   cache.set(key, entry);
   return entry.value;
@@ -145,6 +166,7 @@ export function snapshot(cfg: OddsApiConfig, sport: SportKey, now = new Date(), 
 
 export function clearCache() {
   cache.clear();
+  credits.remaining = null;
 }
 
 function consensusLine(books: BookLine[]): number {
